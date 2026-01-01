@@ -1,0 +1,12 @@
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    environment:
+      RETRIEVAL_URL: ${RETRIEVAL_URL:-http://host.docker.internal:8000}
+      ANNOTATOR_URL: ${ANNOTATOR_URL:-http://host.docker.internal:8080}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./agent_output:/app/agent_output

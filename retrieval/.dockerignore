@@ -1,0 +1,8 @@
+.git
+.gitignore
+.claude
+__pycache__
+*.pyc
+tests/
+legacy/
+cache/

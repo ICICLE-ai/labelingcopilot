@@ -1,0 +1,32 @@
+services:
+  synthesis:
+    build:
+      context: .
+      args:
+        CUDA_BASE_IMAGE: ${CUDA_BASE_IMAGE:-nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04}
+    env_file:
+      - .env
+    environment:
+      SYNTHESIS_RETRIEVAL_BASE_URL: ${SYNTHESIS_RETRIEVAL_BASE_URL:-http://host.docker.internal:8000}
+    volumes:
+      - ./input-images:/app/input-images
+      - ./augmented-output:/app/augmented-output
+      - ./embeddings:/app/embeddings
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=5)"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

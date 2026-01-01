@@ -1,0 +1,64 @@
+{
+    "ANNOTATE": {
+        "detection_models": ["DETIC", "OWL_ViT", "GroundingDINO"],
+        "segmentation_models": ["SAM", "SEEM"],
+        "nms_approaches": [
+            "NON_MAX_SUPPRESSION",
+            "SOFT_NMS",
+            "DIOU_NMS",
+            "ADAPTIVE_NMS",
+            "WEIGHTED_NMS",
+            "CLUSTER_NMS"
+        ],
+        "NMS": {
+            "iou_threshold": 0.5,
+            "sigma": 0.5,
+            "min_score": 0.1,
+            "distance_threshold": 1.0
+        },
+        "DETIC": {
+            "threshold": 0.5,
+            "CONFIG_PATH": "configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml",
+            "model_weight_path": "https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth",
+            "prompt": "a "
+        },
+        "GroundingDINO": {
+            "CONFIG_PATH": "GroundingDINO_SwinT_OGC.py",
+            "WEIGHTS_PATH": "groundingdino_swint_ogc.pth",
+            "MODEL_URL": "https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth",
+            "BOX_THRESHOLD": 0.30,
+            "TEXT_THRESHOLD": 0.25
+        },
+        "OWL_VIT": {
+            "threshold": 0.1,
+            "model": "google/owlvit-base-patch32"
+        },
+        "SAM": {
+            "checkpoint": "sam_vit_h_4b8939.pth",
+            "model_path": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth",
+            "model": "vit_h",
+            "points_per_side": 32,
+            "pred_iou_thresh": 0.86,
+            "stability_score_thresh": 0.92,
+            "min_mask_region_area": 100
+        },
+        "SEEM": {
+            "CONFIG_PATH": "configs/seem/focall_unicl_lang_demo.yaml",
+            "model": "seem_focall_v0.pt",
+            "model_path": "https://huggingface.co/xdecoder/SEEM/resolve/main/seem_focall_v0.pt"
+        },
+        "default_vocabulary": [
+            "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
+            "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
+            "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack",
+            "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball",
+            "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket",
+            "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+            "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake",
+            "chair", "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop",
+            "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink",
+            "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier",
+            "toothbrush"
+        ]
+    }
+}

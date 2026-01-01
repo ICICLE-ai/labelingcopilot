@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Labeling Copilot — Annotation Viewer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; }
+
+  header { background: #161b22; border-bottom: 1px solid #30363d; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header .stats { font-size: 13px; color: #8b949e; display: flex; gap: 16px; }
+  header .stat-val { color: #58a6ff; font-weight: 600; }
+
+  .layout { display: flex; height: calc(100vh - 49px); }
+
+  /* Sidebar */
+  .sidebar { width: 280px; min-width: 280px; background: #161b22; border-right: 1px solid #30363d; overflow-y: auto; }
+  .sidebar-section { padding: 12px 16px; border-bottom: 1px solid #30363d; }
+  .sidebar-section h3 { font-size: 11px; text-transform: uppercase; color: #8b949e; margin-bottom: 8px; letter-spacing: 0.5px; }
+
+  .thumb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .thumb { position: relative; aspect-ratio: 1; cursor: pointer; border-radius: 4px; overflow: hidden; border: 2px solid transparent; transition: border-color 0.15s; }
+  .thumb:hover { border-color: #58a6ff; }
+  .thumb.active { border-color: #f0883e; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb .label { position: absolute; bottom: 0; left: 0; right: 0; font-size: 9px; padding: 2px 4px; background: rgba(0,0,0,0.7); text-align: center; white-space: nowrap; overflow: hidden; }
+  .thumb .label.cat { color: #7ee787; }
+  .thumb .label.dog { color: #ff7b72; }
+  .thumb .synth-badge { position: absolute; top: 3px; right: 3px; background: #8957e5; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px; letter-spacing: 0.5px; }
+  .thumb.synth { border-color: #8957e5; }
+  .synth-pill { display: inline-block; background: #8957e5; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.5px; margin-left: 6px; vertical-align: middle; }
+
+  /* Coverage panel */
+  .coverage-bar { display: flex; align-items: center; margin-bottom: 4px; font-size: 12px; }
+  .coverage-bar .cov-label { width: 100px; text-align: right; margin-right: 8px; color: #8b949e; font-size: 11px; }
+  .coverage-bar .cov-fill { height: 14px; background: #238636; border-radius: 2px; min-width: 2px; transition: width 0.3s; }
+  .coverage-bar .cov-count { margin-left: 6px; font-size: 11px; color: #8b949e; }
+
+  .gap-list { list-style: none; }
+  .gap-list li { font-size: 12px; padding: 3px 0; color: #f0883e; }
+  .gap-list li::before { content: "⚠ "; }
+
+  /* Main canvas area */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .canvas-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #0d1117; }
+  .canvas-wrap canvas { max-width: 100%; max-height: 100%; }
+
+  /* Bottom detail bar */
+  .detail-bar { background: #161b22; border-top: 1px solid #30363d; padding: 12px 20px; display: flex; gap: 24px; flex-wrap: wrap; min-height: 80px; overflow-y: auto; max-height: 200px; }
+  .detail-group { }
+  .detail-group h4 { font-size: 10px; text-transform: uppercase; color: #8b949e; margin-bottom: 4px; letter-spacing: 0.5px; }
+  .detail-group .val { font-size: 13px; }
+  .model-scores { display: flex; gap: 12px; }
+  .model-score { background: #21262d; border-radius: 4px; padding: 4px 8px; font-size: 12px; }
+  .model-score .mname { color: #8b949e; }
+  .model-score .mscore { font-weight: 600; }
+  .tag { display: inline-block; background: #21262d; border-radius: 3px; padding: 2px 6px; font-size: 11px; margin: 1px; }
+
+  /* Filter bar */
+  .filter-bar { padding: 8px 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .filter-btn { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+  .filter-btn:hover { border-color: #58a6ff; }
+  .filter-btn.active { background: #1f6feb; border-color: #1f6feb; }
+
+  .empty-state { color: #8b949e; text-align: center; padding: 40px; font-size: 14px; }
+
+  /* Nav */
+  .nav-bar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px; background: #161b22; border-top: 1px solid #30363d; }
+  .nav-btn { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; border-radius: 4px; padding: 6px 16px; cursor: pointer; font-size: 13px; }
+  .nav-btn:hover { border-color: #58a6ff; }
+  .nav-info { font-size: 13px; color: #8b949e; min-width: 80px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Labeling Copilot — Annotation Viewer</h1>
+  <div class="stats">
+    <span>Images: <span class="stat-val" id="stat-images">-</span></span>
+    <span>Annotations: <span class="stat-val" id="stat-anns">-</span></span>
+    <span>Classes: <span class="stat-val" id="stat-classes">-</span></span>
+    <span id="services-status"></span>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <h3>Filter by class</h3>
+      <div class="filter-bar" id="class-filters"></div>
+    </div>
+    <div class="sidebar-section">
+      <h3>Images</h3>
+      <div class="thumb-grid" id="thumb-grid"></div>
+    </div>
+    <div class="sidebar-section" id="coverage-section" style="display:none">
+      <h3>Scene Coverage</h3>
+      <div id="coverage-charts"></div>
+    </div>
+    <div class="sidebar-section" id="gaps-section" style="display:none">
+      <h3>Gaps Identified</h3>
+      <ul class="gap-list" id="gap-list"></ul>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="canvas-wrap">
+      <canvas id="canvas"></canvas>
+      <div class="empty-state" id="empty-msg">Load a dataset to begin.<br>Run <code>/curate</code> to generate annotations.</div>
+    </div>
+    <div class="nav-bar">
+      <button class="nav-btn" onclick="navigate(-1)">← Prev</button>
+      <span class="nav-info" id="nav-info">0 / 0</span>
+      <button class="nav-btn" onclick="navigate(1)">Next →</button>
+    </div>
+    <div class="detail-bar" id="detail-bar"></div>
+  </div>
+</div>
+
+<script>
+let dataset = null;
+let state = null;
+let currentIdx = -1;
+let classFilter = null; // null = all
+
+const COLORS = {
+  cat: '#7ee787',
+  dog: '#ff7b72',
+  default: '#58a6ff'
+};
+
+async function init() {
+  try {
+    const [dsResp, stResp] = await Promise.all([
+      fetch('/api/dataset'), fetch('/api/state')
+    ]);
+    dataset = await dsResp.json();
+    state = await stResp.json();
+  } catch (e) {
+    console.error('Failed to load data:', e);
+    return;
+  }
+
+  if (!dataset.images || dataset.images.length === 0) {
+    document.getElementById('empty-msg').style.display = 'block';
+    return;
+  }
+  document.getElementById('empty-msg').style.display = 'none';
+
+  // Stats
+  document.getElementById('stat-images').textContent = dataset.images.length;
+  document.getElementById('stat-anns').textContent = dataset.annotations ? dataset.annotations.length : 0;
+  const cats = (dataset.categories || []).map(c => c.name);
+  document.getElementById('stat-classes').textContent = cats.join(', ');
+
+  // Check services
+  checkServices();
+
+  // Class filters
+  renderFilters(cats);
+
+  // Thumbnails
+  renderThumbs();
+
+  // Coverage
+  if (state && state.scene_coverage) renderCoverage(state);
+  if (state && state.gaps_identified && state.gaps_identified.length) renderGaps(state);
+
+  // Show first image
+  selectImage(0);
+
+  // Keyboard nav
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'j') navigate(1);
+    if (e.key === 'ArrowLeft' || e.key === 'k') navigate(-1);
+  });
+}
+
+async function checkServices() {
+  const el = document.getElementById('services-status');
+  let parts = [];
+  try {
+    const r = await fetch('/api/pool-status');
+    if (r.ok) parts.push('<span style="color:#7ee787">● Retrieval</span>');
+    else parts.push('<span style="color:#ff7b72">○ Retrieval</span>');
+  } catch { parts.push('<span style="color:#ff7b72">○ Retrieval</span>'); }
+  try {
+    const r = await fetch('/api/annotator-health');
+    if (r.ok) parts.push('<span style="color:#7ee787">● Annotator</span>');
+    else parts.push('<span style="color:#ff7b72">○ Annotator</span>');
+  } catch { parts.push('<span style="color:#ff7b72">○ Annotator</span>'); }
+  try {
+    const r = await fetch('/api/synthesis-health');
+    if (r.ok) parts.push('<span style="color:#7ee787">● Synthesis</span>');
+    else parts.push('<span style="color:#ff7b72">○ Synthesis</span>');
+  } catch { parts.push('<span style="color:#ff7b72">○ Synthesis</span>'); }
+  el.innerHTML = parts.join(' ');
+}
+
+function getFilteredImages() {
+  if (!classFilter) return dataset.images;
+  const catId = (dataset.categories || []).find(c => c.name === classFilter)?.id;
+  const imageIds = new Set((dataset.annotations || []).filter(a => a.category_id === catId).map(a => a.image_id));
+  return dataset.images.filter(img => imageIds.has(img.id));
+}
+
+function renderFilters(classes) {
+  const el = document.getElementById('class-filters');
+  let html = `<button class="filter-btn active" onclick="setFilter(null, this)">All</button>`;
+  classes.forEach(c => {
+    html += `<button class="filter-btn" onclick="setFilter('${c}', this)">${c}</button>`;
+  });
+  el.innerHTML = html;
+}
+
+function setFilter(cls, btn) {
+  classFilter = cls;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderThumbs();
+  selectImage(0);
+}
+
+function renderThumbs() {
+  const images = getFilteredImages();
+  const el = document.getElementById('thumb-grid');
+  el.innerHTML = images.map((img, i) => {
+    const anns = (dataset.annotations || []).filter(a => a.image_id === img.id);
+    const mainCat = anns.length ? (dataset.categories || []).find(c => c.id === anns[0].category_id)?.name || '?' : '?';
+    const synthCls = img.is_synthetic ? ' synth' : '';
+    const synthBadge = img.is_synthetic ? '<div class="synth-badge">SYN</div>' : '';
+    return `<div class="thumb${synthCls}" data-idx="${i}" onclick="selectImage(${i})">
+      <img src="/img/curated/${img.file_name}" loading="lazy" alt="${img.file_name}">
+      ${synthBadge}
+      <div class="label ${mainCat}">${mainCat} (${anns.length})</div>
+    </div>`;
+  }).join('');
+}
+
+function selectImage(idx) {
+  const images = getFilteredImages();
+  if (images.length === 0) return;
+  idx = Math.max(0, Math.min(idx, images.length - 1));
+  currentIdx = idx;
+
+  // Update active thumb
+  document.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
+  const activeThumb = document.querySelector(`.thumb[data-idx="${idx}"]`);
+  if (activeThumb) { activeThumb.classList.add('active'); activeThumb.scrollIntoView({ block: 'nearest' }); }
+
+  // Update nav
+  document.getElementById('nav-info').textContent = `${idx + 1} / ${images.length}`;
+
+  const img = images[idx];
+  const anns = (dataset.annotations || []).filter(a => a.image_id === img.id);
+  drawImage(img, anns);
+  renderDetails(img, anns);
+}
+
+function navigate(delta) {
+  selectImage(currentIdx + delta);
+}
+
+function drawImage(imgData, anns) {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const image = new Image();
+
+  image.onload = () => {
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    ctx.drawImage(image, 0, 0);
+
+    // Draw bounding boxes
+    anns.forEach(ann => {
+      const [x, y, w, h] = ann.bbox || [];
+      if (!w || !h) return;
+
+      const catName = (dataset.categories || []).find(c => c.id === ann.category_id)?.name || 'unknown';
+      const color = COLORS[catName] || COLORS.default;
+      const score = ann.detection_meta?.consensus_score ?? ann.score ?? null;
+
+      // Box
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(2, Math.min(canvas.width, canvas.height) * 0.004);
+      ctx.strokeRect(x, y, w, h);
+
+      // Label background
+      const label = score !== null ? `${catName} ${(score).toFixed(2)}` : catName;
+      ctx.font = `bold ${Math.max(12, canvas.height * 0.025)}px sans-serif`;
+      const tm = ctx.measureText(label);
+      const lh = Math.max(16, canvas.height * 0.03);
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y - lh - 2, tm.width + 8, lh + 2);
+      ctx.fillStyle = '#000';
+      ctx.fillText(label, x + 4, y - 4);
+
+      // Model agreement indicator
+      const numModels = ann.detection_meta?.num_models_agreed;
+      if (numModels) {
+        const dots = '●'.repeat(numModels) + '○'.repeat(3 - numModels);
+        ctx.font = `${Math.max(10, canvas.height * 0.018)}px sans-serif`;
+        ctx.fillStyle = color;
+        ctx.fillText(dots, x + 4, y + lh - 2);
+      }
+    });
+  };
+  image.src = `/img/curated/${imgData.file_name}`;
+}
+
+function renderDetails(img, anns) {
+  const el = document.getElementById('detail-bar');
+  let html = '';
+
+  // Image info
+  const synthTag = img.is_synthetic ? '<span class="synth-pill">SYNTHETIC</span>' : '';
+  const synthMeta = img.is_synthetic
+    ? `<br><span style="font-size:11px;color:#8b949e">job ${img.synthesis_job_id || '?'} · seed ${img.synthesis_seed || '?'}</span>`
+    : '';
+  html += `<div class="detail-group"><h4>Image</h4><div class="val">${img.file_name}${synthTag}<br>${img.width}×${img.height}${synthMeta}</div></div>`;
+
+  // Scene tags
+  if (img.scene_tags) {
+    html += `<div class="detail-group"><h4>Scene Tags</h4><div class="val">`;
+    Object.entries(img.scene_tags).forEach(([k, v]) => {
+      html += `<span class="tag">${k}: ${v}</span> `;
+    });
+    html += `</div></div>`;
+  }
+
+  // Per-annotation details
+  anns.forEach((ann, i) => {
+    const catName = (dataset.categories || []).find(c => c.id === ann.category_id)?.name || '?';
+    const meta = ann.detection_meta || {};
+
+    html += `<div class="detail-group"><h4>Detection ${i + 1}: ${catName}</h4><div class="val">`;
+    html += `bbox: [${(ann.bbox || []).map(v => Math.round(v)).join(', ')}] &nbsp; area: ${Math.round(ann.area || 0)}px²`;
+
+    if (meta.per_model_scores) {
+      html += `<div class="model-scores" style="margin-top:4px">`;
+      Object.entries(meta.per_model_scores).forEach(([model, score]) => {
+        const c = score > 0.5 ? '#7ee787' : score > 0.2 ? '#f0883e' : '#ff7b72';
+        html += `<div class="model-score"><span class="mname">${model}</span> <span class="mscore" style="color:${c}">${score.toFixed(3)}</span></div>`;
+      });
+      html += `</div>`;
+    }
+
+    html += `</div></div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function renderCoverage(state) {
+  const section = document.getElementById('coverage-section');
+  section.style.display = 'block';
+  const el = document.getElementById('coverage-charts');
+  let html = '';
+
+  Object.entries(state.scene_coverage).forEach(([dim, counts]) => {
+    if (!counts || Object.keys(counts).length === 0) return;
+    const max = Math.max(...Object.values(counts), 1);
+    html += `<div style="margin-bottom:10px"><strong style="font-size:11px;color:#8b949e">${dim}</strong>`;
+    Object.entries(counts).sort((a, b) => b[1] - a[1]).forEach(([label, count]) => {
+      const pct = (count / max) * 100;
+      html += `<div class="coverage-bar">
+        <span class="cov-label">${label}</span>
+        <div class="cov-fill" style="width:${Math.max(pct, 3)}%;max-width:120px"></div>
+        <span class="cov-count">${count}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  el.innerHTML = html;
+}
+
+function renderGaps(state) {
+  const section = document.getElementById('gaps-section');
+  section.style.display = 'block';
+  const el = document.getElementById('gap-list');
+  el.innerHTML = state.gaps_identified.map(g => {
+    if (typeof g === 'string') return `<li>${g}</li>`;
+    const label = `${g.dim} = ${g.value}`;
+    const meta = g.current !== undefined ? ` (${g.current})` : '';
+    return `<li>${label}${meta}</li>`;
+  }).join('');
+}
+
+// Auto-refresh every 10s (picks up new annotations as agent runs)
+setInterval(async () => {
+  try {
+    const [dsResp, stResp] = await Promise.all([
+      fetch('/api/dataset'), fetch('/api/state')
+    ]);
+    const newDs = await dsResp.json();
+    const newSt = await stResp.json();
+    if (newDs.images && newDs.images.length !== (dataset?.images?.length || 0)) {
+      dataset = newDs;
+      state = newSt;
+      document.getElementById('stat-images').textContent = dataset.images.length;
+      document.getElementById('stat-anns').textContent = dataset.annotations ? dataset.annotations.length : 0;
+      renderThumbs();
+      if (state.scene_coverage) renderCoverage(state);
+      if (state.gaps_identified && state.gaps_identified.length) renderGaps(state);
+    }
+  } catch {}
+}, 10000);
+
+init();
+</script>
+</body>
+</html>

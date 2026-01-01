@@ -1,0 +1,13 @@
+results/
+generated/
+datasets/
+logs/
+*.csv
+*.ipynb
+visualization_outputs/
+*.slurm
+
+# Test artifacts
+test_venv/
+test_outputs/
+__pycache__/

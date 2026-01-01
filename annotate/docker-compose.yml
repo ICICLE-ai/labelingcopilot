@@ -1,0 +1,198 @@
+services:
+  # --- Detection models ---
+
+  detic:
+    build:
+      context: .
+      dockerfile: models/detic/Dockerfile
+    environment:
+      MODEL_CONFIG: >
+        {
+          "threshold": 0.5,
+          "CONFIG_PATH": "/app/Detic/configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml",
+          "model_weight_path": "https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth",
+          "prompt": "a "
+        }
+    volumes:
+      - model-weights:/app/weights
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+    networks:
+      - model-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  owl-vit:
+    build:
+      context: .
+      dockerfile: models/owl_vit/Dockerfile
+    environment:
+      MODEL_CONFIG: >
+        {
+          "model": "google/owlvit-base-patch32",
+          "threshold": 0.1
+        }
+    volumes:
+      - model-weights:/app/weights
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - model-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  grounding-dino:
+    build:
+      context: .
+      dockerfile: models/grounding_dino/Dockerfile
+    environment:
+      MODEL_CONFIG: >
+        {
+          "CONFIG_PATH": "GroundingDINO_SwinT_OGC.py",
+          "WEIGHTS_PATH": "/app/weights/groundingdino_swint_ogc.pth",
+          "MODEL_URL": "https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth",
+          "BOX_THRESHOLD": 0.30,
+          "TEXT_THRESHOLD": 0.25
+        }
+    volumes:
+      - model-weights:/app/weights
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - model-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # --- Segmentation models ---
+
+  sam:
+    build:
+      context: .
+      dockerfile: models/sam/Dockerfile
+    environment:
+      MODEL_CONFIG: >
+        {
+          "checkpoint": "/app/weights/sam_vit_b_01ec64.pth",
+          "model_path": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth",
+          "model": "vit_b",
+          "points_per_side": 16,
+          "crop_n_layers": 0,
+          "min_mask_region_area": 500
+        }
+    volumes:
+      - model-weights:/app/weights
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - model-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  seem:
+    build:
+      context: .
+      dockerfile: models/seem/Dockerfile
+    environment:
+      MODEL_CONFIG: >
+        {
+          "CONFIG_PATH": "/app/SEEM/configs/seem/focall_unicl_lang_demo.yaml",
+          "model": "/app/weights/seem_focall_v0.pt",
+          "model_path": "https://huggingface.co/xdecoder/SEEM/resolve/main/seem_focall_v0.pt"
+        }
+    volumes:
+      - model-weights:/app/weights
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+    networks:
+      - model-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # --- Orchestrator ---
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: orchestrator/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_URLS: >
+        {
+          "DETIC": "http://detic:8000",
+          "OWL_ViT": "http://owl-vit:8000",
+          "GroundingDINO": "http://grounding-dino:8000",
+          "SAM": "http://sam:8000",
+          "SEEM": "http://seem:8000"
+        }
+    depends_on:
+      detic:
+        condition: service_healthy
+      owl-vit:
+        condition: service_healthy
+      grounding-dino:
+        condition: service_healthy
+      sam:
+        condition: service_healthy
+      seem:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - model-net
+
+volumes:
+  model-weights:
+
+networks:
+  model-net:
+    driver: bridge

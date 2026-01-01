@@ -1,0 +1,11 @@
+.git
+.claude
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+agent_output
+annotate
+retrieval
+synthesis
+viewer
