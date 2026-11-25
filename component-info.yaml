@@ -1,3 +1,5 @@
+# Canonical source: https://github.com/ICICLE-ai/labelingcopilot
+# Project contributions: https://github.com/ICICLE-ai/labelingcopilot/pulls
 # The upstream repository has no tagged or declared component version.
 - id: "LabelingCopilot:0.0.0"
   owner: "Debargha Ganguly"

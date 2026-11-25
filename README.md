@@ -5,6 +5,8 @@ Labeling Copilot combines active-learning image retrieval, model-assisted annota
 
 **Tags:** Software
 
+> [`ICICLE-ai/labelingcopilot`](https://github.com/ICICLE-ai/labelingcopilot) is the canonical repository. Submit [pull requests](https://github.com/ICICLE-ai/labelingcopilot/pulls) and report [issues](https://github.com/ICICLE-ai/labelingcopilot/issues) here.
+
 ### License
 
 [MIT](LICENSE)
