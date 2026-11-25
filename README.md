@@ -1,5 +1,33 @@
 # Labeling Copilot
 
+<!-- ICICLE metadata start -->
+Labeling Copilot combines active-learning image retrieval, model-assisted annotation, and optional synthetic data generation in a local labeling workflow.
+
+**Tags:** Software
+
+### License
+
+[MIT](LICENSE)
+
+## References
+
+- [Retrieval service](retrieval/README.md)
+- [Annotation service](annotate/README.md)
+- [Synthesis service](synthesis/README.md)
+
+## Acknowledgements
+
+*National Science Foundation (NSF) funded AI institute for Intelligent Cyberinfrastructure with Computational Learning in the Environment (ICICLE) (OAC 2112606)*
+
+## Issue reporting
+
+Report issues on [GitHub](https://github.com/ICICLE-ai/labelingcopilot/issues).
+
+---
+
+# How-To Guides
+<!-- ICICLE metadata end -->
+
 A deep research agent for automated data curation in computer vision.
 
 Labeling Copilot plans, retrieves, annotates, and augments image datasets end-to-end. It composes three model services (retrieval, annotation, synthesis), coordinates them through a top-level agent, and produces COCO-formatted output with per-model detection provenance.

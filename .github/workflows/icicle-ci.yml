@@ -1,0 +1,36 @@
+name: ICICLE CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate service Compose files
+        run: |
+          for file in docker-compose.agent.yml {retrieval,annotate,synthesis}/docker-compose.yml; do
+            docker compose -f "$file" config --quiet --no-env-resolution
+          done
+      - name: Compile Python sources
+        run: python -m compileall -q .
+      - name: Install CPU and retrieval test dependencies
+        working-directory: retrieval
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+          python -m pip install -r requirements.txt -r requirements-test.txt
+      - name: Test retrieval and active learning
+        working-directory: retrieval
+        run: python -m pytest -m 'not gpu'

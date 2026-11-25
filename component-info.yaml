@@ -1,0 +1,16 @@
+# The upstream repository has no tagged or declared component version.
+- id: "LabelingCopilot:0.0.0"
+  owner: "Debargha Ganguly"
+  primaryThrust: "core/Software"
+  name: "Labeling Copilot"
+  status: "PrototypeRelease"
+  description: "Labeling Copilot combines active-learning image retrieval, model-assisted annotation, and optional synthetic data generation in a local labeling workflow."
+  componentVersion: "0.0.0"
+  targetIcicleRelease: None
+  licenseUrl: "https://github.com/ICICLE-ai/labelingcopilot?tab=MIT-1-ov-file"
+  publicAccess: true
+  sourceCodeUrl: "https://github.com/ICICLE-ai/labelingcopilot"
+  codeReviewConducted: false
+  testsWritten: true
+  developerDocumentationAvailable: true
+  trainingTutorialsAvailable: true
